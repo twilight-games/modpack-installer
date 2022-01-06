@@ -53,7 +53,7 @@ app.getVersion().then(value => {
                         type="button"
                         @click="step++"
                         class="items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-teal-100 bg-teal-900 hover:bg-teal-800 disabled:text-neutral-300 disabled:bg-neutral-700 disabled:hover:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700"
-                    >Verder</button>
+                    >Continue</button>
                 </div>
             </div>
         </div>
