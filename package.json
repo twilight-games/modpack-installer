@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@headlessui/vue": "^1.4.2",
+    "@heroicons/vue": "^1.0.5",
     "@tauri-apps/api": "^1.0.0-beta.8",
     "vue": "^3.2.25"
   },
