@@ -22,7 +22,7 @@ fn get_minecraft_directory() -> String {
       minecraft_dir.to_string_lossy().into()
     },
     "windows" => {
-      let minecraft_path = std::path::Path::new("AppData/roaming/.minecraft");
+      let minecraft_path = std::path::Path::new("AppData\\Roaming\\.minecraft");
       let minecraft_dir = home_dir_path.join(minecraft_path);
 
       minecraft_dir.to_string_lossy().into()
