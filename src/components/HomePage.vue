@@ -4,10 +4,29 @@ import getModpacks, { Modpack } from '../api/getModpacks';
 import ModpackSelector from './ModpackSelector.vue';
 import LoadingIcon from './LoadingIcon.vue';
 import AlertBox from './AlertBox.vue';
+import DirectorySelector from './DirectorySelector.vue';
+import { app } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/tauri';
+import getMinecraftDirectory from '../api/getMinecraftDirectory';
 
 
 const { result: modpacks, isLoading: modpacksLoading, error: modpacksError } = getModpacks();
 const selectedModpack = ref<Modpack | null>(null);
+const selectedGamePath = ref<string>('');
+const step = ref(0);
+
+getMinecraftDirectory().then(path => {
+    path = path ?? '';
+    selectedGamePath.value = path;
+})
+
+const versionString = ref<string>('');
+app.getName().then(value => {
+    versionString.value = versionString.value + value + " ";
+})
+app.getVersion().then(value => {
+    versionString.value = versionString.value + value;
+})
 </script>
 <template>
     <!-- This example requires Tailwind CSS v2.0+ -->
@@ -21,7 +40,8 @@ const selectedModpack = ref<Modpack | null>(null);
                     <h1 class="text-white font-semibold ml-8 text-3xl">Modpack Installer</h1>
                 </div>
 
-                <ModpackSelector :modpacks="modpacks" v-model="selectedModpack" />
+                <ModpackSelector :modpacks="modpacks" v-model="selectedModpack" v-if="step == 0" />
+                <DirectorySelector v-model="selectedGamePath" v-if="step == 1" />
 
                 <div class="justify-center flex" v-if="modpacksLoading">
                     <LoadingIcon />
@@ -29,12 +49,14 @@ const selectedModpack = ref<Modpack | null>(null);
 
                 <div class="flex justify-end">
                     <button
-                        :disabled="modpacksError || selectedModpack == null"
+                        :disabled="(step === 0 && (modpacksError || selectedModpack === null)) || (step === 1 && (selectedGamePath === ''))"
                         type="button"
+                        @click="step++"
                         class="items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-teal-100 bg-teal-900 hover:bg-teal-800 disabled:text-neutral-300 disabled:bg-neutral-700 disabled:hover:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700"
                     >Verder</button>
                 </div>
             </div>
         </div>
     </div>
+    <span class="absolute bottom-0 right-0 mr-4 mb-4 text-right text-gray-200 text-xs font-mono" v-text="versionString" />
 </template>
