@@ -49,7 +49,7 @@ const props = defineProps<{
     modelValue: string
 }>()
 
-const emit = defineEmits(['update:modelValue', 'next'])
+const emit = defineEmits(['update:modelValue', 'next', 'alert'])
 
 const gamePath = computed({
     get: () => props.modelValue,
@@ -73,11 +73,11 @@ const isChecking = ref<boolean>(false);
 
 async function nextStep() {
     isChecking.value = true;
-    errorMessage.value = null;
+    emit('alert', null);
 
     const isMinecraftDir: boolean = await isMinecraftDirectory(gamePath.value);
     if (!isMinecraftDir) {
-        errorMessage.value = 'This directory is not a valid Minecraft folder.';
+        emit('alert', 'This directory is not a valid Minecraft folder.')
     }
 
     isChecking.value = false;

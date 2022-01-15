@@ -1,5 +1,4 @@
-import { fetch, Response, ResponseType } from "@tauri-apps/api/http";
-import { reactive, Ref, ref, toRefs } from "vue";
+import { fetch } from "@tauri-apps/api/http";
 
 export interface Mod {
   id: string;
@@ -41,32 +40,9 @@ export const rawDataToModObject = (data: any): Mod => ({
   hash: data.hash,
 });
 
-export default (): {
-  result: Ref<Modpack[]>;
-  error: Ref<any>;
-  isLoading: Ref<boolean>;
-} => {
-  const state = reactive({
-    isLoading: false,
-    error: null as any,
-  });
+export default async (): Promise<Modpack[]> => {
+  const result = await fetch<ModpackRequest>('https://modpack.vloedje.nl/test.json');
+  const { modpacks } = result.data;
 
-  const result = ref<Modpack[]>([]);
-  state.isLoading = true;
-  fetch<any>("https://modpack.vloedje.nl/test.json")
-    .then(({ data }) => {
-      result.value = data.modpacks.map(rawDataToModpackObject);
-      console.log(result.value);
-    })
-    .catch((error) => {
-      state.error = error;
-    })
-    .finally(() => {
-      state.isLoading = false;
-    });
-
-  return {
-    result,
-    ...toRefs(state),
-  };
-};
+  return modpacks.map(rawDataToModpackObject);
+}
