@@ -6,10 +6,10 @@ import { computed } from "vue";
 
 const props = defineProps<{
     modpacks: Modpack[],
-    modelValue: Modpack | null
+    modelValue: Modpack | null,
 }>()
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'next'])
 
 const selectedModpack = computed({
     get: () => props.modelValue,
@@ -52,4 +52,12 @@ const selectedModpack = computed({
             </RadioGroupOption>
         </div>
     </RadioGroup>
+    <div class="flex justify-end">
+                    <button
+                        :disabled="selectedModpack === null"
+                        type="button"
+                        @click="$emit('next')"
+                        class="items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-teal-100 bg-teal-900 hover:bg-teal-800 disabled:text-neutral-300 disabled:bg-neutral-700 disabled:hover:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700"
+                    >Continue</button>
+                </div>
 </template>>

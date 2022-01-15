@@ -26,19 +26,30 @@
                 <span>Select</span>
             </button>
         </div>
+        <p v-if="errorMessage" v-text="errorMessage" class="text-white mt-1 font-mono"></p>
     </div>
+        <div class="flex justify-end">
+                    <button
+                        :disabled="gamePath === '' || isChecking"
+                        type="button"
+                        @click="nextStep"
+                        class="items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-teal-100 bg-teal-900 hover:bg-teal-800 disabled:text-neutral-300 disabled:bg-neutral-700 disabled:hover:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700"
+                    >Continue</button>
+                </div>
 </template>
 
 <script setup lang="ts">
-import { dialog, fs, os } from "@tauri-apps/api"
+import { dialog, fs, os, path } from "@tauri-apps/api"
 import { computed, ref } from "vue";
 import { SearchIcon, FolderIcon } from '@heroicons/vue/solid'
+import isMinecraftDirectory from "../api/isMinecraftDirectory";
+import isDirectory from "../api/isDirectory";
 
 const props = defineProps<{
     modelValue: string
 }>()
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'next'])
 
 const gamePath = computed({
     get: () => props.modelValue,
@@ -46,25 +57,30 @@ const gamePath = computed({
 });
 
 async function openDialog() {
-    let defaultPath = undefined;
-    try {
-        const dir = await fs.readDir(gamePath.value);
-        if (dir.length > 0) {
-            defaultPath = gamePath.value;
-        }
-    } catch { }
-
-    dialog.open({
+    const dir: string|string[] = await dialog.open({
         multiple: false,
         directory: true,
-        defaultPath: defaultPath,
-    }).then(path => {
-        if (typeof path === "string") {
-            gamePath.value = path;
-        } else {
-            gamePath.value = path[0];
-        }
-    })
+        defaultPath: (await isDirectory(gamePath.value)) ? gamePath.value : (await path.homeDir()),
+    });
+
+    if (typeof dir === "string") {
+        gamePath.value = dir;
+    }       
+}
+
+const errorMessage = ref<string|null>(null);
+const isChecking = ref<boolean>(false);
+
+async function nextStep() {
+    isChecking.value = true;
+    errorMessage.value = null;
+
+    const isMinecraftDir: boolean = await isMinecraftDirectory(gamePath.value);
+    if (!isMinecraftDir) {
+        errorMessage.value = 'This directory is not a valid Minecraft folder.';
+    }
+
+    isChecking.value = false;
 }
 
 </script>

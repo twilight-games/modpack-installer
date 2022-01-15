@@ -5,7 +5,7 @@
 
 fn main() {
   tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![get_minecraft_directory])
+    .invoke_handler(tauri::generate_handler![get_minecraft_directory, directory_exists, path_join])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
@@ -37,4 +37,19 @@ fn get_minecraft_directory() -> String {
       "".into()
     }
   }
+}
+
+#[tauri::command]
+fn directory_exists(path: String) -> bool {
+  std::path::Path::new(&path).exists().into()
+  
+}
+
+#[tauri::command]
+fn path_join(path_string: String, second_path_string: String) -> String {
+  let path = std::path::Path::new(&path_string);
+  let second_path = std::path::Path::new(&second_path_string);
+
+  path.join(second_path).to_string_lossy().into()
+  
 }
