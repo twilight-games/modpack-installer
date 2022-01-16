@@ -5,7 +5,7 @@ import ModpackSelector from './ModpackSelector.vue';
 import AlertBox from '../components/AlertBox.vue';
 import DirectorySelector from './DirectorySelector.vue';
 import { app } from '@tauri-apps/api';
-import getMinecraftDirectory from '../api/getMinecraftDirectory';
+import Confirmation from './Confirmation.vue';
 
 const selectedModpack = ref<Modpack | null>(null);
 const selectedGamePath = ref<string>('');
@@ -16,7 +16,7 @@ const versionString = ref<string>('');
 
 onMounted(async () => {
     versionString.value = (await app.getName()) + ' v' + (await app.getVersion());
-    selectedGamePath.value = (await getMinecraftDirectory()) ?? '';
+    
 })
 
 function nextStep() {
@@ -40,13 +40,20 @@ function nextStep() {
                     v-model="selectedModpack"
                     @next="nextStep"
                     @alert="errorMessage = $event"
-                    v-if="step == 0"
+                    v-if="step === 0"
                 />
                 <DirectorySelector
                     v-model="selectedGamePath"
                     @next="nextStep"
                     @alert="errorMessage = $event"
-                    v-if="step == 1"
+                    v-if="step === 1"
+                />
+                <Confirmation 
+                :selected-modpack="selectedModpack"
+                :selected-game-path="selectedGamePath"
+                @navigate="step = $event"
+                @next="nextStep"
+                v-if="step === 2 && selectedModpack"
                 />
             </div>
         </div>

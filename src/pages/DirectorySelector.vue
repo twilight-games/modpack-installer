@@ -40,10 +40,11 @@
 
 <script setup lang="ts">
 import { dialog, fs, os, path } from "@tauri-apps/api"
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { SearchIcon, FolderIcon } from '@heroicons/vue/solid'
 import isMinecraftDirectory from "../api/isMinecraftDirectory";
 import isDirectory from "../api/isDirectory";
+import getMinecraftDirectory from "../api/getMinecraftDirectory";
 
 const props = defineProps<{
     modelValue: string
@@ -71,6 +72,10 @@ async function openDialog() {
 const errorMessage = ref<string|null>(null);
 const isChecking = ref<boolean>(false);
 
+onMounted(async () => {
+    gamePath.value = (await getMinecraftDirectory()) ?? '';
+})
+
 async function nextStep() {
     isChecking.value = true;
     emit('alert', null);
@@ -81,6 +86,8 @@ async function nextStep() {
     }
 
     isChecking.value = false;
+
+    emit('next');
 }
 
 </script>

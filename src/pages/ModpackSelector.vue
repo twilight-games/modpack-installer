@@ -14,8 +14,8 @@ const isLoading = ref<boolean>(true);
 const emit = defineEmits(['update:model-value', 'next', 'alert'])
 
 const selectedModpack = computed({
-    get: () => props.modelValue,
-    set: (value: any) => emit('update:model-value', value)
+    get: () => props.modelValue?.id,
+    set: (value: any) => emit('update:model-value', modpacks.value.find(x => x.id === value))
 })
 
 onMounted(async () => {
@@ -26,22 +26,26 @@ onMounted(async () => {
         emit('alert', error);
     } finally {
         isLoading.value = false;
-        selectedModpack.value = (typeof modpacks.value[0] === 'undefined') ? modpacks.value[0] : null;
+        
+        if(!selectedModpack.value && modpacks.value.length > 0) {
+            selectedModpack.value = modpacks.value[0].id;
+        }
     }
 });
+
 
 </script>
 
 <template>
-    <div v-if="!isLoading" class="space-y-4">
+    <div v-show="!isLoading" class="space-y-4">
         <RadioGroup v-model="selectedModpack">
-            <RadioGroupLabel class="sr-only">Privacy setting</RadioGroupLabel>
+            <RadioGroupLabel class="sr-only">Modpack selection</RadioGroupLabel>
             <div class="bg-neutral-800 rounded-md -space-y-px">
                 <RadioGroupOption
                     as="template"
                     v-for="(modpack, modpackIndex) in modpacks"
                     :key="modpack.id"
-                    :value="modpack"
+                    :value="modpack.id"
                     v-slot="{ checked, active }"
                 >
                     <div
