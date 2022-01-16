@@ -1,18 +1,18 @@
 <template>
     <div class="space-y-4">
-        <div class="flex justify-between bg-neutral-800 px-4 py-2">
+        <div class="flex justify-between bg-neutral-800 px-4 py-2 rounded-md">
             <div>
                 <h3 class="text-gray-300 text-xs mb-1">Modpack</h3>
                 <span class="text-gray-100" v-text="selectedModpack.name" />
             </div>
-            <button class="text-teal-600" @click="$emit('navigate', 0)">Edit</button>
+            <button class="text-teal-600 hover:text-teal-500" @click="$emit('navigate', 0)">Edit</button>
         </div>
-        <div class="flex justify-between bg-neutral-800 px-4 py-2">
+        <div class="flex justify-between bg-neutral-800 px-4 py-2 rounded-md">
             <div>
                 <h3 class="text-gray-300 text-xs mb-1">Minecraft directory</h3>
-                <span class="text-gray-100" v-text="selectedGamePath" />
+                <span class="text-gray-100 font-mono text-sm" v-text="selectedGamePath" />
             </div>
-            <button class="text-teal-600" @click="$emit('navigate', 1)">Edit</button>
+            <button class="text-teal-600 hover:text-teal-500" @click="$emit('navigate', 1)">Edit</button>
         </div>
         <div class="flex justify-end">
             <button
