@@ -61,10 +61,4 @@ onMounted(async () => {
     })
 });
 
-const install = async function () {
-
-
-    downloadModpack(props.selectedModpack);
-}
-
 </script>

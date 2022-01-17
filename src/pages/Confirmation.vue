@@ -36,7 +36,7 @@ const props = defineProps<{
 const emit = defineEmits(['navigate', 'next'])
 
 const install = async function () {
-    downloadModpack(props.selectedModpack);
+    downloadModpack(props.selectedModpack, props.selectedGamePath);
     emit('next');
 }
 
