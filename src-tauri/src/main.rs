@@ -58,6 +58,7 @@ fn path_join(path_string: String, second_path_string: String) -> String {
 #[derive(serde::Serialize)]
 struct ProgressPayload {
   current_mod: String,
+  mod_index: usize,
   progress: i32,
 }
 
@@ -93,7 +94,7 @@ async fn download_modpack(data: serde_json::Value, window: tauri::Window) {
   let modpack: Modpack = serde_json::from_value(data).unwrap();
 
   tauri::async_runtime::spawn(async move {
-    for mcmod in modpack.mods.iter() {
+    for (i, mcmod) in modpack.mods.iter().enumerate() {
       for n in 1..=100 {
         std::thread::sleep(std::time::Duration::from_millis(100));
         window
@@ -101,6 +102,7 @@ async fn download_modpack(data: serde_json::Value, window: tauri::Window) {
             "install-progress",
             ProgressPayload {
               current_mod: mcmod.name.clone(),
+              mod_index: i + 1,
               progress: n,
             },
           )

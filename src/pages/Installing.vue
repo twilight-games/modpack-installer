@@ -7,7 +7,7 @@
         <div class="bg-gray-200 rounded-full overflow-hidden">
             <div class="h-2 bg-teal-600 rounded-full" v-bind:style="{ width: progress + '%' }" />
         </div>
-        <p class="text-sm text-center text-neutral-100" v-text="currentMod"></p>
+        <p class="text-sm text-center text-neutral-100" v-text="modStatus"></p>
     </div>
 </template>
 
@@ -15,7 +15,7 @@
 import { Modpack } from '../api/getModpacks';
 import { listen } from '@tauri-apps/api/event';
 import downloadModpack from '../api/downloadModpack';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 
 const props = defineProps<{
@@ -23,12 +23,18 @@ const props = defineProps<{
 }>()
 
 const currentMod = ref<string>('');
+const modIndex = ref<Number>(0);
 const progress = ref<Number>(0);
+
+const modStatus = computed(() => {
+    return `${currentMod.value} (${modIndex.value} / ${props.selectedModpack.mods.length})`
+})
 
 const emit = defineEmits(['navigate', 'next'])
 
 interface payload {
     current_mod: string,
+    mod_index: Number,
     progress: Number,
 }
 
@@ -42,6 +48,7 @@ onMounted(async () => {
         console.log(event.payload);
         const payload = event.payload as payload;
         currentMod.value = payload.current_mod;
+        modIndex.value = payload.mod_index;
         progress.value = payload.progress;
     })
 
