@@ -6,6 +6,8 @@ import AlertBox from '../components/AlertBox.vue';
 import DirectorySelector from './DirectorySelector.vue';
 import { app } from '@tauri-apps/api';
 import Confirmation from './Confirmation.vue';
+import Installing from './Installing.vue';
+import Finished from './Finished.vue';
 
 const selectedModpack = ref<Modpack | null>(null);
 const selectedGamePath = ref<string>('');
@@ -16,7 +18,7 @@ const versionString = ref<string>('');
 
 onMounted(async () => {
     versionString.value = (await app.getName()) + ' v' + (await app.getVersion());
-    
+
 })
 
 function nextStep() {
@@ -48,13 +50,20 @@ function nextStep() {
                     @alert="errorMessage = $event"
                     v-if="step === 1"
                 />
-                <Confirmation 
-                :selected-modpack="selectedModpack"
-                :selected-game-path="selectedGamePath"
-                @navigate="step = $event"
-                @next="nextStep"
-                v-if="step === 2 && selectedModpack"
+                <Confirmation
+                    :selected-modpack="selectedModpack"
+                    :selected-game-path="selectedGamePath"
+                    @navigate="step = $event"
+                    @next="nextStep"
+                    v-if="step === 2 && selectedModpack"
                 />
+                <Installing
+                    :selected-modpack="selectedModpack"
+                    @navigate="step = $event"
+                    @next="nextStep"
+                    v-if="step === 3 && selectedModpack"
+                />
+                <Finished v-if="step === 4 && selectedModpack" />
             </div>
         </div>
     </div>

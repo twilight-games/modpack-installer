@@ -17,7 +17,7 @@
         <div class="flex justify-end">
             <button
                 type="button"
-                @click="$emit('next')"
+                @click="install"
                 class="items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-teal-100 bg-teal-900 hover:bg-teal-800 disabled:text-neutral-300 disabled:bg-neutral-700 disabled:hover:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700"
             >Install</button>
         </div>
@@ -26,7 +26,7 @@
 
 <script setup lang="ts">
 import { Modpack } from '../api/getModpacks';
-
+import downloadModpack from '../api/downloadModpack';
 
 const props = defineProps<{
     selectedModpack: Modpack,
@@ -34,5 +34,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits(['navigate', 'next'])
+
+const install = async function () {
+    downloadModpack(props.selectedModpack);
+    emit('next');
+}
 
 </script>
