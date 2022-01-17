@@ -67,7 +67,6 @@ function nextStep() {
             </div>
         </div>
     </div>
-    <p class="text-white" v-text="selectedModpack?.name + ' ' + selectedGamePath"></p>
     <span
         class="absolute bottom-0 right-0 mr-4 mb-4 text-right text-gray-200 text-xs font-mono"
         v-text="versionString"
