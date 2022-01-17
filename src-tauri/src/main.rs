@@ -3,6 +3,9 @@
   windows_subsystem = "windows"
 )]
 
+use futures_util::StreamExt;
+use std::io::Write;
+
 fn main() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
@@ -59,7 +62,7 @@ fn path_join(path_string: String, second_path_string: String) -> String {
 struct ProgressPayload {
   current_mod: String,
   mod_index: usize,
-  progress: i32,
+  progress: u64,
 }
 
 #[derive(serde::Serialize)]
@@ -118,6 +121,34 @@ async fn install_profile(gamepath: &std::path::Path, modpack: &Modpack, applicat
   serde_json::to_writer(std::fs::File::create(gamepath.join("launcher_profiles.json")).unwrap(), &profiles).unwrap();
 }
 
+async fn download_mod(mods_dir: &std::path::Path, mcmod: &Mod, window: &tauri::Window, index: usize) {
+  let resp = reqwest::get(&mcmod.url).await.unwrap();
+  let total_size = resp.content_length().unwrap();
+  let mut stream = resp.bytes_stream();
+  let mut file = std::fs::File::create(mods_dir.join(&mcmod.filename)).unwrap();
+  let mut downloaded: u64 = 0;
+
+  while let Some(item) = stream.next().await {
+    let chunk = item.unwrap();
+    file.write(&chunk).unwrap();
+    downloaded = downloaded + (chunk.len() as u64);
+
+    let percentage: f64 = (downloaded as f64) / (total_size as f64) * 100.0;
+
+    window
+    .emit(
+      "install-progress",
+      ProgressPayload {
+        current_mod: mcmod.name.clone(),
+        mod_index: index + 1,
+        progress: percentage as u64,
+      },
+    )
+    .unwrap();
+  }
+
+}
+
 #[tauri::command]
 async fn download_modpack(modpack: serde_json::Value, gamepath: String, window: tauri::Window) {
   let modpack: Modpack = serde_json::from_value(modpack).unwrap();
@@ -130,22 +161,12 @@ async fn download_modpack(modpack: serde_json::Value, gamepath: String, window: 
 
   install_profile(&gamepath, &modpack, &application_dir).await;
   
+  let mods_dir = application_dir.join("mods");
+  std::fs::create_dir_all(&mods_dir).unwrap();
 
   tauri::async_runtime::spawn(async move {
     for (i, mcmod) in modpack.mods.iter().enumerate() {
-      for n in 1..=100 {
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        window
-          .emit(
-            "install-progress",
-            ProgressPayload {
-              current_mod: mcmod.name.clone(),
-              mod_index: i + 1,
-              progress: n,
-            },
-          )
-          .unwrap();
-      }
+      download_mod(&mods_dir, &mcmod, &window, i).await;
     }
 
     window

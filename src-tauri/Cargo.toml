@@ -22,6 +22,7 @@ tokio = { version = "1.15.0", features = ["full"] }
 reqwest = { version = "0.11.9", features = ["json", "stream"] }
 directories = "4.0"
 chrono = "0.4"
+futures-util = "0.3.19"
 
 [features]
 default = [ "custom-protocol" ]
