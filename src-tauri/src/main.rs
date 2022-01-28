@@ -5,6 +5,7 @@
 
 use futures_util::StreamExt;
 use std::io::Write;
+use image::io::Reader as ImageReader;
 
 fn main() {
   tauri::Builder::default()
@@ -107,12 +108,22 @@ async fn install_profile(gamepath: &std::path::Path, modpack: &Modpack, applicat
   let profiles_file = std::fs::File::open(gamepath.join("launcher_profiles.json")).unwrap();
   let mut profiles: serde_json::Value = serde_json::from_reader(std::io::BufReader::new(profiles_file)).unwrap();
   let now: chrono::DateTime<chrono::Utc> = std::time::SystemTime::now().into();
+
+  let context = tauri::generate_context!();
+  let img_path = tauri::api::path::resolve_path(context.config(), context.package_info(), "resources/profile.png", Some(tauri::api::path::BaseDirectory::Resource)).unwrap();
+  println!("{}", img_path.to_string_lossy());
+  let img = ImageReader::open(img_path.to_string_lossy().to_string()).unwrap().decode().unwrap();
+  let mut buf = vec![];
+  img.write_to(&mut buf, image::ImageOutputFormat::Png).unwrap();
+  let res_base64 = base64::encode(&buf);
+
   let profile = serde_json::json!({
     "created": now.to_rfc3339(),
     "gameDir": application_dir,
     "lastUsed": now.to_rfc3339(),
     "lastVersionId": format!("twilight-{}-{}", &modpack.loaderVersion, &modpack.minecraftVersion),
     "type": "custom",
+    "icon": format!("data:image/png;base64,{}", res_base64),
     "name": &modpack.name
   });
   let obj = profiles.get_mut("profiles").unwrap().as_object_mut().unwrap();

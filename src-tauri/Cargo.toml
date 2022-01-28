@@ -23,6 +23,8 @@ reqwest = { version = "0.11.9", features = ["json", "stream"] }
 directories = "4.0"
 chrono = "0.4"
 futures-util = "0.3.19"
+image = "0.23.14"
+base64 = "0.13.0"
 
 [features]
 default = [ "custom-protocol" ]
