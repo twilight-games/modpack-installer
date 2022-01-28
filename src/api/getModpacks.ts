@@ -9,6 +9,15 @@ export interface Mod {
   hash: string;
 }
 
+export interface ModConfig {
+  id: string;
+  name: string;
+  filename: string;
+  state: string;
+  url: string;
+  hash: string;
+}
+
 export interface Modpack {
   id: string;
   name: string;
@@ -16,6 +25,7 @@ export interface Modpack {
   minecraftVersion: string;
   loaderVersion: string;
   mods: Mod[];
+  configs: ModConfig[],
 }
 
 export interface ModpackRequest {
@@ -29,9 +39,19 @@ export const rawDataToModpackObject = (data: any): Modpack => ({
   minecraftVersion: data.minecraft_version,
   loaderVersion: data.loader_version,
   mods: (data.mods || []).map(rawDataToModObject),
+  configs: (data.configs || []).map(rawDataToModConfigObject),
 });
 
 export const rawDataToModObject = (data: any): Mod => ({
+  id: data.id,
+  name: data.name,
+  filename: data.filename,
+  state: data.state,
+  url: data.url,
+  hash: data.hash,
+});
+
+export const rawDataToModConfigObject = (data: any): ModConfig => ({
   id: data.id,
   name: data.name,
   filename: data.filename,

@@ -82,6 +82,17 @@ struct Mod {
   hash: String,
 }
 
+#[derive(serde::Deserialize, serde::Serialize, Clone)]
+struct ModConfig {
+  id: String,
+  name: String,
+  filename: String,
+  state: String,
+  url: String,
+  hash: String,
+}
+
+
 #[allow(non_snake_case)]
 #[derive(serde::Deserialize, serde::Serialize, Clone)]
 struct Modpack {
@@ -91,6 +102,7 @@ struct Modpack {
   minecraftVersion: String,
   loaderVersion: String,
   mods: Vec<Mod>,
+  configs: Vec<ModConfig>,
 }
 
 async fn install_loader(minecraft_version: &String, loader_version: &String, gamepath: &std::path::Path) {
@@ -160,6 +172,18 @@ async fn download_mod(mods_dir: &std::path::Path, mcmod: &Mod, window: &tauri::W
 
 }
 
+async fn configure_mod(config_dir: &std::path::Path, modconfig: &ModConfig) {
+  let resp = reqwest::get(&modconfig.url).await.unwrap();
+
+  let file_path = config_dir.join(std::path::Path::new(&modconfig.filename));
+  std::fs::create_dir_all(file_path.parent().unwrap()).unwrap();
+
+  let mut file = std::fs::File::create(file_path).unwrap();
+
+  let content = resp.text().await.unwrap();
+  std::io::copy(&mut content.as_bytes(), &mut file).unwrap();
+}
+
 #[tauri::command]
 async fn download_modpack(modpack: serde_json::Value, gamepath: String, window: tauri::Window) {
   let modpack: Modpack = serde_json::from_value(modpack).unwrap();
@@ -175,9 +199,16 @@ async fn download_modpack(modpack: serde_json::Value, gamepath: String, window: 
   let mods_dir = application_dir.join("mods");
   std::fs::create_dir_all(&mods_dir).unwrap();
 
+  let config_dir = application_dir.join("config");
+  std::fs::create_dir_all(&config_dir).unwrap();
+
   tauri::async_runtime::spawn(async move {
     for (i, mcmod) in modpack.mods.iter().enumerate() {
       download_mod(&mods_dir, &mcmod, &window, i).await;
+    }
+
+    for (_i, modconfig) in modpack.configs.iter().enumerate() {
+      configure_mod(&config_dir, &modconfig).await;
     }
 
     window
