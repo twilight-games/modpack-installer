@@ -62,6 +62,7 @@ export const rawDataToModConfigObject = (data: any): ModConfig => ({
 
 export default async (): Promise<Modpack[]> => {
   const result = await fetch<ModpackRequest>('https://modpack.vloedje.nl/test.json');
+  console.log(result);
   const { modpacks } = result.data;
 
   return modpacks.map(rawDataToModpackObject);

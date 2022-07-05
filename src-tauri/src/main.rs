@@ -59,20 +59,20 @@ fn path_join(path_string: String, second_path_string: String) -> String {
   path.join(second_path).to_string_lossy().into()
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 struct ProgressPayload {
   current_mod: String,
   mod_index: usize,
   progress: u64,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 struct FinishedPayload {
   finished: bool,
   errors: bool,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
 struct Mod {
   id: String,
   name: String,
@@ -82,7 +82,7 @@ struct Mod {
   hash: String,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
 struct ModConfig {
   id: String,
   name: String,
@@ -94,7 +94,7 @@ struct ModConfig {
 
 
 #[allow(non_snake_case)]
-#[derive(serde::Deserialize, serde::Serialize, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
 struct Modpack {
   id: String,
   name: String,
@@ -122,7 +122,7 @@ async fn install_profile(gamepath: &std::path::Path, modpack: &Modpack, applicat
   let now: chrono::DateTime<chrono::Utc> = std::time::SystemTime::now().into();
 
   let context = tauri::generate_context!();
-  let img_path = tauri::api::path::resolve_path(context.config(), context.package_info(), "resources/profile.png", Some(tauri::api::path::BaseDirectory::Resource)).unwrap();
+  let img_path = tauri::api::path::resolve_path(context.config(), context.package_info(), &tauri::Env::default(), "resources/profile.png", Some(tauri::api::path::BaseDirectory::Resource)).unwrap();
   println!("{}", img_path.to_string_lossy());
   let img = ImageReader::open(img_path.to_string_lossy().to_string()).unwrap().decode().unwrap();
   let mut buf = vec![];
@@ -210,6 +210,9 @@ async fn download_modpack(modpack: serde_json::Value, gamepath: String, window: 
     for (_i, modconfig) in modpack.configs.iter().enumerate() {
       configure_mod(&config_dir, &modconfig).await;
     }
+
+    let mut lockfile = std::fs::File::create(application_dir.join("modpack.json")).unwrap();
+    std::io::copy(&mut serde_json::to_string(&modpack).unwrap().as_bytes(), &mut lockfile).unwrap();
 
     window
       .emit(

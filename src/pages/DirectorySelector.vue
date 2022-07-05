@@ -58,7 +58,7 @@ const gamePath = computed({
 });
 
 async function openDialog() {
-    const dir: string|string[] = await dialog.open({
+    const dir: string|string[]|null = await dialog.open({
         multiple: false,
         directory: true,
         defaultPath: (await isDirectory(gamePath.value)) ? gamePath.value : (await path.homeDir()),
