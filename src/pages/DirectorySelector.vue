@@ -22,7 +22,7 @@
                 type="button"
                 class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-neutral-500 text-sm font-medium rounded-r-md text-neutral-200 bg-neutral-700 hover:bg-neutral-600 focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
             >
-                <SearchIcon class="h-5 w-5 text-gray-500" aria-hidden="true" />
+                <MagnifyingGlassIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
                 <span>Select</span>
             </button>
         </div>
@@ -41,7 +41,7 @@
 <script setup lang="ts">
 import { dialog, fs, os, path } from "@tauri-apps/api"
 import { computed, onMounted, ref } from "vue";
-import { SearchIcon, FolderIcon } from '@heroicons/vue/solid'
+import { MagnifyingGlassIcon, FolderIcon } from '@heroicons/vue/20/solid'
 import isMinecraftDirectory from "../api/isMinecraftDirectory";
 import isDirectory from "../api/isDirectory";
 import getMinecraftDirectory from "../api/getMinecraftDirectory";

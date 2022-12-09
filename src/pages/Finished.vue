@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 import { window } from '@tauri-apps/api';
-import { CheckIcon } from '@heroicons/vue/outline'
+import { CheckIcon } from '@heroicons/vue/24/outline'
 
 const close = async function () {
     const w = await window.getCurrent();
