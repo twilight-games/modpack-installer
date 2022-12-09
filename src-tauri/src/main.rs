@@ -4,7 +4,7 @@
 )]
 
 use futures_util::StreamExt;
-use std::io::Write;
+use std::io::{Write, Cursor};
 use image::io::Reader as ImageReader;
 
 fn main() {
@@ -126,7 +126,7 @@ async fn install_profile(gamepath: &std::path::Path, modpack: &Modpack, applicat
   println!("{}", img_path.to_string_lossy());
   let img = ImageReader::open(img_path.to_string_lossy().to_string()).unwrap().decode().unwrap();
   let mut buf = vec![];
-  img.write_to(&mut buf, image::ImageOutputFormat::Png).unwrap();
+  img.write_to(&mut Cursor::new(&mut buf), image::ImageOutputFormat::Png).unwrap();
   let res_base64 = base64::encode(&buf);
 
   let profile = serde_json::json!({
