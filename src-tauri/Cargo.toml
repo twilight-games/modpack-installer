@@ -24,7 +24,7 @@ directories = "4.0"
 chrono = "0.4"
 futures-util = "0.3.25"
 image = "0.24.5"
-base64 = "0.13.1"
+base64 = "0.20.0"
 
 [features]
 default = [ "custom-protocol" ]
