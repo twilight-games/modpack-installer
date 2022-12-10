@@ -31,10 +31,10 @@ jobs:
       with:
         toolchain: stable
         profile: minimal
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.platform }}
-        working-directory: ./src-tauri
+        workspaces: ./src-tauri
     - name: install webkit2gtk (ubuntu only)
       if: matrix.platform == 'ubuntu-latest'
       run: |
