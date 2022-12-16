@@ -2,40 +2,33 @@
     <div class="space-y-2">
         <h2 class="text-white text-2xl text-center">
             Installing:
-            <span v-text="selectedModpack.name"></span>
+            <span v-text="store.selectedModpack?.name"></span>
         </h2>
         <div class="bg-gray-200 rounded-full overflow-hidden">
-            <div class="h-2 bg-teal-600 rounded-full" v-bind:style="{ width: progress + '%' }" />
+            <div class="h-2 bg-teal-600 rounded-full" v-bind:style="{ width: (bytes / total_btyes * 100) + '%' }" />
         </div>
-        <p class="text-sm text-center text-neutral-100" v-text="modStatus"></p>
     </div>
 </template>
 
 <script setup lang="ts">
-import { Modpack } from '../api/getModpacks';
 import { listen } from '@tauri-apps/api/event';
-import downloadModpack from '../api/downloadModpack';
 import { computed, onMounted, ref } from 'vue';
+import { downloadModpack } from '../api/modpacks';
+import { useModpackStore } from "../state/modpackStore";
+
+const store = useModpackStore();
 
 
-const props = defineProps<{
-    selectedModpack: Modpack,
-}>()
+const bytes = ref<number>(0);
+const total_btyes = ref<number>(0);
 
-const currentMod = ref<string>('');
-const modIndex = ref<Number>(0);
-const progress = ref<Number>(0);
-
-const modStatus = computed(() => {
-    return `${currentMod.value} (${modIndex.value} / ${props.selectedModpack.mods.length})`
-})
-
-const emit = defineEmits(['navigate', 'next'])
 
 interface payload {
-    current_mod: string,
-    mod_index: Number,
-    progress: Number,
+    bytes: number,
+}
+
+interface total_filesizepayload {
+    total_bytes: number,
 }
 
 interface finishedpayload {
@@ -44,19 +37,27 @@ interface finishedpayload {
 }
 
 onMounted(async () => {
+    if (store.selectedModpack && store.gamePath) {
+        try {
+            downloadModpack(store.selectedModpack, store.gamePath);
+        } catch(error: unknown) {
+            store.error = (error as Error).message;
+        }
+    }
     await listen('install-progress', event => {
-        console.log(event.payload);
         const payload = event.payload as payload;
-        currentMod.value = payload.current_mod;
-        modIndex.value = payload.mod_index;
-        progress.value = payload.progress;
+        bytes.value = bytes.value + payload.bytes;
+    })
+
+    await listen('total-filesize', event => {
+        const payload = event.payload as total_filesizepayload;
+        total_btyes.value = payload.total_bytes;
     })
 
     await listen('install-done', event => {
-        console.log(event.payload);
         const payload = event.payload as finishedpayload;
         if (payload.finished && !payload.errors) {
-            emit('next');
+            store.nextStep()
         }
     })
 });

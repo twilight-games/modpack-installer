@@ -54,6 +54,11 @@
         "all": true,
         "request": true,
         "scope": ["https://modpack.vloedje.nl/**"]
+      },
+      "fs": {
+        "readDir": true,
+        "all": false,
+        "scope": ["*"]
       }
     },
     "windows": [

@@ -1,55 +1,35 @@
 <script setup lang="ts">
-import getModpacks, { Modpack } from "../api/getModpacks";
 import LoadingIcon from "../components/LoadingIcon.vue";
 import { RadioGroup, RadioGroupDescription, RadioGroupLabel, RadioGroupOption } from '@headlessui/vue'
-import { computed, onMounted, ref, watch } from "vue";
-
-
-const props = defineProps<{
-    modelValue: Modpack | null,
-}>()
-
-const modpacks = ref<Modpack[]>([]);
-const isLoading = ref<boolean>(true);
-const emit = defineEmits(['update:model-value', 'next', 'alert'])
-
-const selectedModpack = computed({
-    get: () => props.modelValue?.id,
-    set: (value: any) => emit('update:model-value', modpacks.value.find(x => x.id === value))
-})
+import { useModpackStore } from "../state/modpackStore";
+import { onMounted } from "vue";
+import { getModpacks } from "../api/modpacks";
+const store = useModpackStore();
 
 onMounted(async () => {
     try {
-        modpacks.value = await getModpacks();
-    } catch (error) {
-        console.error(error);
-        emit('alert', error);
-    } finally {
-        isLoading.value = false;
-        
-        if(!selectedModpack.value && modpacks.value.length > 0) {
-            selectedModpack.value = modpacks.value[0].id;
-        }
+        store.setModpacks(await getModpacks());
+    } catch (error: unknown) {
+        store.error = (error as Error).message;
     }
-});
-
+})
 
 </script>
 
 <template>
-    <div v-show="!isLoading" class="space-y-4">
-        <RadioGroup v-model="selectedModpack">
+    <div v-show="store.modpacks.length > 0" class="space-y-4">
+        <RadioGroup v-model="store.selectedModpackId">
             <RadioGroupLabel class="sr-only">Modpack selection</RadioGroupLabel>
             <div class="bg-neutral-800 rounded-md -space-y-px">
                 <RadioGroupOption
                     as="template"
-                    v-for="(modpack, modpackIndex) in modpacks"
+                    v-for="(modpack, modpackIndex) in store.modpacks"
                     :key="modpack.id"
                     :value="modpack.id"
                     v-slot="{ checked, active }"
                 >
                     <div
-                        :class="[modpackIndex === 0 ? 'rounded-tl-md rounded-tr-md' : '', modpackIndex === modpacks.length - 1 ? 'rounded-bl-md rounded-br-md' : '', checked ? 'bg-teal-900 border-teal-600 z-10' : 'border-gray-600', 'relative border p-4 flex cursor-pointer focus:outline-none']"
+                        :class="[modpackIndex === 0 ? 'rounded-tl-md rounded-tr-md' : '', modpackIndex === store.modpacks.length - 1 ? 'rounded-bl-md rounded-br-md' : '', checked ? 'bg-teal-900 border-teal-600 z-10' : 'border-gray-600', 'relative border p-4 flex cursor-pointer focus:outline-none']"
                     >
                         <span
                             :class="[checked ? 'bg-teal-600 border-transparent' : 'bg-white border-gray-300', active ? 'ring-2 ring-offset-2 ring-teal-500' : '', 'h-4 w-4 mt-0.5 cursor-pointer rounded-full border flex items-center justify-center']"
@@ -73,15 +53,15 @@ onMounted(async () => {
         </RadioGroup>
         <div class="flex justify-end">
             <button
-                :disabled="selectedModpack === null"
+                :disabled="store.selectedModpackId === null"
                 type="button"
-                @click="$emit('next')"
+                @click="store.nextStep"
                 class="items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-teal-100 bg-teal-900 hover:bg-teal-800 disabled:text-neutral-300 disabled:bg-neutral-700 disabled:hover:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700"
             >Continue</button>
         </div>
     </div>
 
-    <div class="justify-center flex" v-if="isLoading">
+    <div class="justify-center flex" v-if="store.modpacks.length == 0">
         <LoadingIcon />
     </div>
 </template>>
