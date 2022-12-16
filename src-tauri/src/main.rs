@@ -3,9 +3,28 @@
   windows_subsystem = "windows"
 )]
 
+mod mrpack;
+mod types;
+use anyhow::Result;
+use std::fs;
+use std::io::{BufReader, Cursor, Write};
+use std::path::Path;
+use std::time::SystemTime;
+use std::{fs::File, path::PathBuf};
+
+use chrono::{DateTime, Utc};
 use futures_util::StreamExt;
-use std::io::{Write, Cursor};
-use image::io::Reader as ImageReader;
+use image::DynamicImage;
+use mrpack::modrinthpack::ModrinthPack;
+use reqwest::Response;
+use serde_json::{Map, Value};
+use types::*;
+use walkdir::WalkDir;
+
+use crate::mrpack::modrinthpack::ModrinthManifest;
+// use image::io::Reader as ImageReader;
+
+const BASE_URL: &str = "https://modpack.vloedje.nl";
 
 fn main() {
   tauri::Builder::default()
@@ -13,7 +32,7 @@ fn main() {
       get_minecraft_directory,
       directory_exists,
       path_join,
-      download_modpack
+      install_modpack
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
@@ -59,169 +78,266 @@ fn path_join(path_string: String, second_path_string: String) -> String {
   path.join(second_path).to_string_lossy().into()
 }
 
-#[derive(serde::Serialize, Clone)]
-struct ProgressPayload {
-  current_mod: String,
-  mod_index: usize,
-  progress: u64,
+async fn install_loader(
+  loader_id: &String,
+  minecraft_version: &String,
+  loader_version: &String,
+  gamepath: &std::path::Path,
+) -> Result<()> {
+  let version_dir = gamepath.join("versions").join(&loader_id);
+  fs::create_dir_all(&version_dir).expect("Unable to create loader directory");
+
+  let response: Response = reqwest::get(format!(
+    "https://meta.quiltmc.org/v3/versions/loader/{}/{}/profile/json",
+    minecraft_version, loader_version
+  ))
+  .await
+  .expect("Unable to fetch loader configuration");
+  let mut loader_config: Value = response
+    .json::<Value>()
+    .await
+    .expect("Unable to get body from loader configuration response");
+  let obj = loader_config.as_object_mut().expect("");
+  obj.insert("id".to_owned(), Value::String(loader_id.to_owned()));
+
+  let file: File = File::create(version_dir.join(format!("{}.json", &loader_id)))
+    .expect("Unable to create loader config");
+  serde_json::to_writer_pretty(file, &loader_config).expect("Unable to write to loader config");
+
+  Ok(())
 }
 
-#[derive(serde::Serialize, Clone)]
-struct FinishedPayload {
-  finished: bool,
-  errors: bool,
-}
+async fn install_profile(
+  gamepath: &std::path::Path,
+  modpack: &Modpack,
+  application_dir: &std::path::Path,
+  icon_path: &PathBuf,
+) -> Result<()> {
+  let profiles_file: File = File::open(gamepath.join("launcher_profiles.json"))
+    .expect("Unable to open launcher_profiles.json");
+  let mut profiles: Value = serde_json::from_reader(BufReader::new(&profiles_file))
+    .expect("Unable to parse launcher_profiles.json");
+  let now: DateTime<Utc> = SystemTime::now().into();
 
-#[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
-struct Mod {
-  id: String,
-  name: String,
-  filename: String,
-  state: String,
-  url: String,
-  hash: String,
-}
+  let img: DynamicImage = image::open(icon_path).expect("Unable to open profile icon");
+  let mut buf: Vec<u8> = vec![];
+  img
+    .write_to(&mut Cursor::new(&mut buf), image::ImageOutputFormat::Png)
+    .expect("Unable to write profile icon to buffer");
+  let res_base64: String = base64::encode(&buf);
 
-#[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
-struct ModConfig {
-  id: String,
-  name: String,
-  filename: String,
-  state: String,
-  url: String,
-  hash: String,
-}
-
-
-#[allow(non_snake_case)]
-#[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
-struct Modpack {
-  id: String,
-  name: String,
-  description: String,
-  minecraftVersion: String,
-  loaderVersion: String,
-  mods: Vec<Mod>,
-  configs: Vec<ModConfig>,
-}
-
-async fn install_loader(minecraft_version: &String, loader_version: &String, gamepath: &std::path::Path) {
-  
-  let version_string = format!("twilight-{}-{}", loader_version, minecraft_version);
-  let version_dir = gamepath.join("versions").join(&version_string);
-  std::fs::create_dir_all(&version_dir).unwrap();
-
-  let profile_resp = reqwest::get(format!("https://modpack.vloedje.nl/profile/{}/{}.json", minecraft_version, loader_version)).await.unwrap().text().await.unwrap();
-  let mut file = std::fs::File::create(version_dir.join(format!("{}.json", &version_string))).unwrap();
-  std::io::copy(&mut profile_resp.as_bytes(), &mut file).unwrap();
-}
-
-async fn install_profile(gamepath: &std::path::Path, modpack: &Modpack, application_dir: &std::path::Path) {
-  let profiles_file = std::fs::File::open(gamepath.join("launcher_profiles.json")).unwrap();
-  let mut profiles: serde_json::Value = serde_json::from_reader(std::io::BufReader::new(profiles_file)).unwrap();
-  let now: chrono::DateTime<chrono::Utc> = std::time::SystemTime::now().into();
-
-  let context = tauri::generate_context!();
-  let img_path = tauri::api::path::resolve_path(context.config(), context.package_info(), &tauri::Env::default(), "resources/profile.png", Some(tauri::api::path::BaseDirectory::Resource)).unwrap();
-  println!("{}", img_path.to_string_lossy());
-  let img = ImageReader::open(img_path.to_string_lossy().to_string()).unwrap().decode().unwrap();
-  let mut buf = vec![];
-  img.write_to(&mut Cursor::new(&mut buf), image::ImageOutputFormat::Png).unwrap();
-  let res_base64 = base64::encode(&buf);
-
-  let profile = serde_json::json!({
+  let profile: Value = serde_json::json!({
     "created": now.to_rfc3339(),
     "gameDir": application_dir,
     "lastUsed": now.to_rfc3339(),
-    "lastVersionId": format!("twilight-{}-{}", &modpack.loaderVersion, &modpack.minecraftVersion),
+    "lastVersionId": &modpack.id,
     "type": "custom",
     "icon": format!("data:image/png;base64,{}", res_base64),
     "name": &modpack.name
   });
-  let obj = profiles.get_mut("profiles").unwrap().as_object_mut().unwrap();
-  obj.insert(modpack.id.clone(), profile);
+  let obj: &mut Map<String, Value> = profiles
+    .get_mut("profiles")
+    .expect("Unable to get profiles from json")
+    .as_object_mut()
+    .expect("Unable to make profile mutable");
+  obj.insert(modpack.id.to_owned(), profile);
 
-  serde_json::to_writer(std::fs::File::create(gamepath.join("launcher_profiles.json")).unwrap(), &profiles).unwrap();
+  let profiles_file_write: File = File::create(gamepath.join("launcher_profiles.json"))
+    .expect("Unable to open launcher_profiles for writing");
+  serde_json::to_writer_pretty(profiles_file_write, &profiles).expect("Unable to write profiles");
+
+  Ok(())
 }
 
-async fn download_mod(mods_dir: &std::path::Path, mcmod: &Mod, window: &tauri::Window, index: usize) {
-  let resp = reqwest::get(&mcmod.url).await.unwrap();
-  let total_size = resp.content_length().unwrap();
+async fn download_file(url: &str, path: &PathBuf, window: &tauri::Window, emit_progress: bool) {
+  let resp: Response = reqwest::get(url)
+    .await
+    .expect(format!("Error downloading file from {}", url).as_str());
   let mut stream = resp.bytes_stream();
-  let mut file = std::fs::File::create(mods_dir.join(&mcmod.filename)).unwrap();
-  let mut downloaded: u64 = 0;
+  let mut file: File = File::create(path)
+    .expect(format!("Error creating file at {}", path.to_str().unwrap()).as_str());
 
   while let Some(item) = stream.next().await {
-    let chunk = item.unwrap();
-    file.write(&chunk).unwrap();
-    downloaded = downloaded + (chunk.len() as u64);
+    let chunk = item.expect(format!("Error downloading file from {}", url).as_str());
+    file
+      .write(&chunk)
+      .expect(format!("Error writing to file at {}", path.to_str().unwrap()).as_str());
 
-    let percentage: f64 = (downloaded as f64) / (total_size as f64) * 100.0;
-
-    window
-    .emit(
-      "install-progress",
-      ProgressPayload {
-        current_mod: mcmod.name.clone(),
-        mod_index: index + 1,
-        progress: percentage as u64,
-      },
-    )
-    .unwrap();
+    if emit_progress {
+      window
+        .emit(
+          "install-progress",
+          ProgressPayload {
+            bytes: chunk.len() as u64,
+          },
+        )
+        .expect("Error while transmitting install progress");
+    }
   }
-
 }
 
-async fn configure_mod(config_dir: &std::path::Path, modconfig: &ModConfig) {
-  let resp = reqwest::get(&modconfig.url).await.unwrap();
+async fn get_mrpack(
+  modpack: &Modpack,
+  modpack_dir: &PathBuf,
+  window: &tauri::Window,
+) -> Result<File> {
+  let modpack_file_name: String = format!("{}-{}.mrpack", modpack.id, modpack.version);
+  let modpack_url: String = format!("{}/{}", BASE_URL, modpack_file_name);
+  let modpack_zip_path: PathBuf = modpack_dir.join(&modpack_file_name);
+  download_file(&modpack_url, &modpack_zip_path, &window, false).await;
 
-  let file_path = config_dir.join(std::path::Path::new(&modconfig.filename));
-  std::fs::create_dir_all(file_path.parent().unwrap()).unwrap();
+  let modpack_file = File::open(&modpack_zip_path).expect("Unable to open modpack file");
 
-  let mut file = std::fs::File::create(file_path).unwrap();
-
-  let content = resp.text().await.unwrap();
-  std::io::copy(&mut content.as_bytes(), &mut file).unwrap();
+  Ok(modpack_file)
 }
 
 #[tauri::command]
-async fn download_modpack(modpack: serde_json::Value, gamepath: String, window: tauri::Window) {
-  let modpack: Modpack = serde_json::from_value(modpack).unwrap();
-  let gamepath = std::path::Path::new(&gamepath);
+async fn install_modpack(
+  modpack: serde_json::Value,
+  gamepath: String,
+  window: tauri::Window,
+  handle: tauri::AppHandle,
+) -> Result<(), tauri::Error> {
+  let modpack: Modpack = serde_json::from_value(modpack).expect("Unable to map modpack data");
+  let gamepath: &Path = Path::new(&gamepath);
 
-  install_loader(&modpack.minecraftVersion, &modpack.loaderVersion, &gamepath).await;
-  
-  let application_dir = gamepath.join(".twilight").join(&modpack.id);
-  std::fs::create_dir_all(&application_dir).unwrap();
+  let modpack_dir: PathBuf = gamepath.join(".vloedje").join(&modpack.id);
+  fs::create_dir_all(&modpack_dir).expect("Unable to create modpack folder");
 
-  install_profile(&gamepath, &modpack, &application_dir).await;
-  
-  let mods_dir = application_dir.join("mods");
-  std::fs::create_dir_all(&mods_dir).unwrap();
+  let pack_cache_dir: &PathBuf = &modpack_dir.join(".pack");
 
-  let config_dir = application_dir.join("config");
-  std::fs::create_dir_all(&config_dir).unwrap();
+  if pack_cache_dir.is_dir() && pack_cache_dir.starts_with(gamepath) {
+    fs::remove_dir_all(pack_cache_dir).expect("Unable to clear cache dir");
+  }
 
-  tauri::async_runtime::spawn(async move {
-    for (i, mcmod) in modpack.mods.iter().enumerate() {
-      download_mod(&mods_dir, &mcmod, &window, i).await;
+  let modpack_file: File = get_mrpack(&modpack, &modpack_dir, &window)
+    .await
+    .expect("Unable to download modpack file");
+  let modrinthpack: ModrinthPack =
+    ModrinthPack::from_mrpack(modpack_file, &modpack_dir).expect("Unable to extract modpack");
+  let manifest: ModrinthManifest = modrinthpack
+    .get_manifest()
+    .expect("Unable to read modpack index");
+  let manifest_files = &manifest.files;
+
+  let total_filesize = manifest_files.into_iter().map(|x| x.file_size).sum();
+  window
+    .emit(
+      "total-filesize",
+      TotalFileSizePayload {
+        total_bytes: total_filesize,
+      },
+    )
+    .unwrap();
+
+  install_loader(
+    &modpack.id,
+    &manifest.dependencies.minecraft,
+    &manifest.dependencies.quilt_loader,
+    &gamepath,
+  )
+  .await
+  .expect("Unable to install loader");
+
+  let profile_icon: PathBuf = handle
+    .path_resolver()
+    .resolve_resource("resources/profile.png")
+    .expect("Unable to resolve profile icon");
+
+  install_profile(&gamepath, &modpack, &modpack_dir, &profile_icon)
+    .await
+    .expect("Unable to install profile");
+
+  let has_prev_paths = modpack_dir.join(".changed_paths").is_file();
+
+  if has_prev_paths {
+    let prev_paths: Vec<String> = fs::read_to_string(&modpack_dir.join(".changed_paths"))
+      .expect("Error reading changed paths")
+      .split("\n")
+      .map(|s| s.to_string())
+      .collect();
+
+    for file in WalkDir::new(&modpack_dir)
+      .into_iter()
+      .filter_map(|f| f.ok())
+    {
+      if file.metadata().unwrap().is_file() {
+        let path: &Path = file
+          .path()
+          .strip_prefix(&modpack_dir)
+          .expect("Path not in modpack directory");
+        let path_str: &str = path.to_str().expect("cannot convert path to str");
+        let pack_cache_dir: &PathBuf = &modpack_dir.join(".pack");
+
+        let is_in_prev_paths: bool = prev_paths.contains(&path_str.to_owned());
+        let is_in_manifest: bool = manifest_files
+          .into_iter()
+          .find(|&f| f.path == path_str)
+          .is_some();
+        let is_in_overrides: bool = pack_cache_dir.join("overrides").join(path).is_file();
+        let is_in_client_overrides: bool =
+          pack_cache_dir.join("client-overrides").join(path).is_file();
+
+        if is_in_prev_paths && !(is_in_manifest || is_in_overrides || is_in_client_overrides) {
+          println!("{}", &path_str);
+
+          if path.starts_with(gamepath) {
+            fs::remove_file(path).expect("Unable to remove old file");
+          }
+        }
+      }
     }
+  }
 
-    for (_i, modconfig) in modpack.configs.iter().enumerate() {
-      configure_mod(&config_dir, &modconfig).await;
+  let mut changed_paths: Vec<String> = vec![];
+
+  for file in manifest_files.into_iter() {
+    changed_paths.push(file.path.to_owned());
+
+    let file_path = &modpack_dir.join(file.path.to_owned());
+    if file_path.starts_with(&modpack_dir) {
+      fs::create_dir_all(file_path.parent().unwrap()).expect("Error creating parent directory");
+      download_file(&file.downloads[0], file_path, &window, true).await;
     }
+  }
 
-    let mut lockfile = std::fs::File::create(application_dir.join("modpack.json")).unwrap();
-    std::io::copy(&mut serde_json::to_string(&modpack).unwrap().as_bytes(), &mut lockfile).unwrap();
+  let override_paths: [&str; 2] = ["overrides", "client-overrides"];
 
-    window
-      .emit(
-        "install-done",
-        FinishedPayload {
-          finished: true,
-          errors: false,
-        },
-      )
-      .unwrap();
-  });
+  for override_path in override_paths.into_iter() {
+    for file in WalkDir::new(&modpack_dir.join(".pack").join(override_path))
+      .into_iter()
+      .filter_map(|f| f.ok())
+    {
+      if file.metadata().unwrap().is_file() {
+        let path = file
+          .path()
+          .strip_prefix(&modpack_dir.join(".pack").join(override_path))
+          .expect("this is awkward");
+        changed_paths.push(path.to_str().unwrap().to_owned());
+
+        fs::create_dir_all(modpack_dir.join(path).parent().unwrap())
+          .expect("Error creating parent directory");
+
+        fs::copy(file.path(), modpack_dir.join(path)).expect("Unable to copy override file");
+      }
+    }
+  }
+
+  fs::write(
+    &modpack_dir.join(".changed_paths"),
+    changed_paths.join("\n"),
+  )
+  .expect("Error writing changed paths");
+
+  window
+    .emit(
+      "install-done",
+      FinishedPayload {
+        finished: true,
+        errors: false,
+      },
+    )
+    .unwrap();
+
+  Ok(())
 }

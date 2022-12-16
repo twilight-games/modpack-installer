@@ -1,3 +1,55 @@
+<script setup lang="ts">
+import { dialog, path } from "@tauri-apps/api"
+import { onMounted, ref } from "vue";
+import { MagnifyingGlassIcon, FolderIcon } from '@heroicons/vue/20/solid'
+import { getMinecraftDirectory, isMinecraftDirectory, isDirectory } from "../api/filesystem";
+import { useModpackStore } from "../state/modpackStore";
+const store = useModpackStore();
+
+
+async function openDialog() {
+    const dir: string|string[]|null = await dialog.open({
+        multiple: false,
+        directory: true,
+        defaultPath: (await isDirectory(store.gamePath)) ? store.gamePath : (await path.homeDir()),
+    });
+
+    if (typeof dir === "string") {
+        store.gamePath = dir;
+    }       
+}
+
+const isChecking = ref<boolean>(false);
+
+onMounted(async () => {
+    if (store.gamePath == '') {
+        const minecraftDir = await getMinecraftDirectory();
+        store.gamePath = minecraftDir;
+    }
+})
+
+async function validateAndContinue() {
+    isChecking.value = true;
+    store.error = undefined;
+
+    console.log(store.gamePath);
+
+    const isMinecraftDir: boolean = await isMinecraftDirectory(store.gamePath);
+    console.log(isMinecraftDir);
+    if (!isMinecraftDir) {
+        console.log('nee')
+        isChecking.value = false;
+        store.error = 'This directory is not a valid Minecraft folder.'
+        return;
+    }
+
+    isChecking.value = false;
+
+    store.nextStep()
+}
+
+</script>
+
 <template>
     <div>
         <label
@@ -10,7 +62,7 @@
                     <FolderIcon class="h-5 w-5 text-gray-500" aria-hidden="true" />
                 </div>
                 <input
-                    v-model="gamePath"
+                    v-model="store.gamePath"
                     type="email"
                     name="email"
                     id="email"
@@ -26,68 +78,13 @@
                 <span>Select</span>
             </button>
         </div>
-        <p v-if="errorMessage" v-text="errorMessage" class="text-white mt-1 font-mono"></p>
     </div>
         <div class="flex justify-end">
                     <button
-                        :disabled="gamePath === '' || isChecking"
+                        :disabled="store.gamePath === '' || isChecking"
                         type="button"
-                        @click="nextStep"
+                        @click="validateAndContinue"
                         class="items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-teal-100 bg-teal-900 hover:bg-teal-800 disabled:text-neutral-300 disabled:bg-neutral-700 disabled:hover:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700"
                     >Continue</button>
                 </div>
 </template>
-
-<script setup lang="ts">
-import { dialog, fs, os, path } from "@tauri-apps/api"
-import { computed, onMounted, ref } from "vue";
-import { MagnifyingGlassIcon, FolderIcon } from '@heroicons/vue/20/solid'
-import isMinecraftDirectory from "../api/isMinecraftDirectory";
-import isDirectory from "../api/isDirectory";
-import getMinecraftDirectory from "../api/getMinecraftDirectory";
-
-const props = defineProps<{
-    modelValue: string
-}>()
-
-const emit = defineEmits(['update:modelValue', 'next', 'alert'])
-
-const gamePath = computed({
-    get: () => props.modelValue,
-    set: (value) => emit('update:modelValue', value)
-});
-
-async function openDialog() {
-    const dir: string|string[]|null = await dialog.open({
-        multiple: false,
-        directory: true,
-        defaultPath: (await isDirectory(gamePath.value)) ? gamePath.value : (await path.homeDir()),
-    });
-
-    if (typeof dir === "string") {
-        gamePath.value = dir;
-    }       
-}
-
-const errorMessage = ref<string|null>(null);
-const isChecking = ref<boolean>(false);
-
-onMounted(async () => {
-    gamePath.value = (await getMinecraftDirectory()) ?? '';
-})
-
-async function nextStep() {
-    isChecking.value = true;
-    emit('alert', null);
-
-    const isMinecraftDir: boolean = await isMinecraftDirectory(gamePath.value);
-    if (!isMinecraftDir) {
-        emit('alert', 'This directory is not a valid Minecraft folder.')
-    }
-
-    isChecking.value = false;
-
-    emit('next');
-}
-
-</script>
