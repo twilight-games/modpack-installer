@@ -32,12 +32,8 @@ async function validateAndContinue() {
     isChecking.value = true;
     store.error = undefined;
 
-    console.log(store.gamePath);
-
     const isMinecraftDir: boolean = await isMinecraftDirectory(store.gamePath);
-    console.log(isMinecraftDir);
     if (!isMinecraftDir) {
-        console.log('nee')
         isChecking.value = false;
         store.error = 'This directory is not a valid Minecraft folder.'
         return;
@@ -63,9 +59,9 @@ async function validateAndContinue() {
                 </div>
                 <input
                     v-model="store.gamePath"
-                    type="email"
-                    name="email"
-                    id="email"
+                    name="path"
+                    id="path"
+                    disabled
                     class="focus:ring-teal-500 focus:border-teal-500 block w-full rounded-none rounded-l-md pl-10 sm:text-sm text-neutral-200 border border-neutral-500 bg-neutral-700"
                 />
             </div>

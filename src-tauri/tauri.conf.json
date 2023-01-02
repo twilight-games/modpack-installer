@@ -58,7 +58,7 @@
       "fs": {
         "readDir": true,
         "all": false,
-        "scope": ["*"]
+        "scope": []
       }
     },
     "windows": [

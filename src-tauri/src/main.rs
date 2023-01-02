@@ -15,7 +15,7 @@ use std::{fs::File, path::PathBuf};
 use chrono::{DateTime, Utc};
 use futures_util::StreamExt;
 use image::DynamicImage;
-use mrpack::modrinthpack::ModrinthPack;
+use mrpack::modrinthpack::{ModrinthPack, ModrinthFileEnvTypes};
 use reqwest::Response;
 use serde_json::{Map, Value};
 use types::*;
@@ -281,9 +281,7 @@ async fn install_modpack(
         if is_in_prev_paths && !(is_in_manifest || is_in_overrides || is_in_client_overrides) {
           println!("{}", &path_str);
 
-          if path.starts_with(gamepath) {
-            fs::remove_file(path).expect("Unable to remove old file");
-          }
+          fs::remove_file(&modpack_dir.join(path)).expect("Unable to remove old file");
         }
       }
     }
@@ -295,7 +293,7 @@ async fn install_modpack(
     changed_paths.push(file.path.to_owned());
 
     let file_path = &modpack_dir.join(file.path.to_owned());
-    if file_path.starts_with(&modpack_dir) {
+    if file_path.starts_with(&modpack_dir) && file.env.client != ModrinthFileEnvTypes::Unsupported {
       fs::create_dir_all(file_path.parent().unwrap()).expect("Error creating parent directory");
       download_file(&file.downloads[0], file_path, &window, true).await;
     }

@@ -9,10 +9,13 @@ pub struct ModrinthFileHashes {
   pub sha512: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum ModrinthFileEnvTypes {
+  #[serde(alias = "required")]
   Required,
+  #[serde(alias = "optional")]
   Optional,
+  #[serde(alias = "unsupported")]
   Unsupported
 }
 
@@ -29,6 +32,7 @@ pub struct ModrinthFile {
   pub downloads: Vec<String>,
   #[serde(alias = "fileSize")]
   pub file_size: u64,
+  pub env: ModrinthFileEnv
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]

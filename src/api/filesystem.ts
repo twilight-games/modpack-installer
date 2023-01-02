@@ -20,7 +20,8 @@ export const isMinecraftDirectory = async (directory: string): Promise<boolean> 
         if (!entries.find(x => x.name == "versions" && x.children)) return false;
 
         return true;
-    } catch {
+    } catch (e) {
+        console.log(e)
         return false;
     }
     

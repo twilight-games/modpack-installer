@@ -5,8 +5,9 @@
             <span v-text="store.selectedModpack?.name"></span>
         </h2>
         <div class="bg-gray-200 rounded-full overflow-hidden">
-            <div class="h-2 bg-teal-600 rounded-full" v-bind:style="{ width: (bytes / total_btyes * 100) + '%' }" />
+            <div class="h-2 bg-teal-600 rounded-full" v-bind:style="{ width: (total_bytes ? (bytes / total_bytes * 100) : 0 )+ '%' }" />
         </div>
+        <span class="text-gray-300 text-xs tracking-wider font-medium" v-text="(total_bytes ? (bytes / total_bytes * 100).toFixed(0) : 0 )+ '%'"></span>
     </div>
 </template>
 
@@ -20,7 +21,7 @@ const store = useModpackStore();
 
 
 const bytes = ref<number>(0);
-const total_btyes = ref<number>(0);
+const total_bytes = ref<number|null>(null);
 
 
 interface payload {
@@ -51,7 +52,7 @@ onMounted(async () => {
 
     await listen('total-filesize', event => {
         const payload = event.payload as total_filesizepayload;
-        total_btyes.value = payload.total_bytes;
+        total_bytes.value = payload.total_bytes;
     })
 
     await listen('install-done', event => {
