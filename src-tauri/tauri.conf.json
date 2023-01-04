@@ -58,7 +58,11 @@
       "fs": {
         "readDir": true,
         "all": false,
-        "scope": []
+        "scope": [
+          "$HOME/.minecraft",
+          "$HOME/AppData/Roaming/.minecraft",
+          "$HOME/Library/Application Support/minecraft"
+        ]
       }
     },
     "windows": [
