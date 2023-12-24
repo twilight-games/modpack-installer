@@ -22,7 +22,7 @@ tokio = { version = "1.24.1", features = ["full"] }
 reqwest = { version = "0.11.13", features = ["json", "stream"] }
 directories = "4.0"
 chrono = "0.4"
-futures-util = "0.3.25"
+futures-util = "0.3.30"
 image = "0.24.5"
 base64 = "0.21.0"
 zip = "0.6.3"
