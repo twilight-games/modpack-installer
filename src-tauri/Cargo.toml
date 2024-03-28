@@ -18,7 +18,7 @@ tauri-build = { version = "1.2.1", features = [] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.2.3", features = ["api-all"] }
-tokio = { version = "1.24.1", features = ["full"] }
+tokio = { version = "1.37.0", features = ["full"] }
 reqwest = { version = "0.11.13", features = ["json", "stream"] }
 directories = "4.0"
 chrono = "0.4"
